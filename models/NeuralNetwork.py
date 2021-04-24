@@ -117,13 +117,12 @@ class NeuralNetwork():
         m = Y.shape[1]
         return (1 / m) * (self.A3 - Y)
 
-    def b_cross_entropy(self, Y):
+    def b_cross_entropy(self, Y, P):
         """
         Binary Cross Entropy
         P: Estimated probability of belonging to class 1
         Y: Target
         """
-        P = self.A3
         return -Y * np.log(P) - (1 - Y) * np.log(1 - P)
 
 

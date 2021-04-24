@@ -58,28 +58,10 @@ class NeuralNetwork():
                     "W2": np.ones(shape=(self.o_size, self.h_size)),
                     }
 
-
-        """# Bias 1 (rows = hidden size)
-        self.b1 = np.zeros(shape=(self.h_size,1))
-
-        # Weight matrix 1 (rows = hidden size; columns = input size)
-        self.W1 = np.random.randn(self.h_size, self.i_size) / (np.sqrt(self.i_size))
-
-
-        # Bias 2 (rows = output size)
-        self.b2 = np.zeros(shape=(self.o_size,1))
-
-        # Weight matrix 2 (rows = output size; columns = hidden size)
-        self.W2 = np.random.randn(self.o_size, self.h_size) / (np.sqrt(self.h_size))"""
-
-
-
     def forward(self, X):
 
         # First layer
         self.A1 = X.T
-
-        print(self.params["W1"],self.A1)
 
         # Dot product of X (input) and W1 + Bias
         self.Z2 = np.dot(self.params["W1"],self.A1) + self.params["b1"]
@@ -103,11 +85,11 @@ class NeuralNetwork():
         #derivative of sigmoid
         return s * (1 - s)
 
-    def backward(self, Y):
+    def backward(self, Y, f):
 
-        m = Y.shape[0]
 
-        self.dCost = (1 / m) * (self.A3 - Y.T)
+        self.dCost = f(Y.T)
+
         self.Delta3 = self.dCost * self.sigmoidPrime(self.A3)
 
         self.grads["W2"] = np.dot(self.Delta3, self.A2.T)
@@ -123,11 +105,37 @@ class NeuralNetwork():
 
         return self.grads["W2"],self.grads["b2"],self.grads["W1"],self.grads["b1"]
 
-    def cost_comp(self,Y):
-
+    def mse(self,Y):
         m = Y.shape[0]
-
         return (1 / 2*m) * np.sum(np.square(Y.T - self.A3))
+
+    def d_mse(self,Y):
+        """
+        Y: Target  (format [[0,0,0,0]] )
+        """
+
+        m = Y.shape[1]
+        return (1 / m) * (self.A3 - Y)
+
+    def b_cross_entropy(self, Y):
+        """
+        Binary Cross Entropy
+        P: Estimated probability of belonging to class 1
+        Y: Target
+        """
+        P = self.A3
+        return -Y * np.log(P) - (1 - Y) * np.log(1 - P)
+
+
+    def db_cross_entropy(self,Y):
+        """
+        Derivative of Binary Cross Entropy
+        P: Estimated probability of belonging to class 1
+        Y: Target
+        """
+        P = self.A3
+        return (-Y / P) + (1 - Y)/(1 - P)
+
 
     def predict(self, X, Y):
 

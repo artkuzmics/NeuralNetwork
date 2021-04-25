@@ -41,6 +41,8 @@ class NeuralNetwork():
         self.o = copy.deepcopy(self.grads)
         self.step = copy.deepcopy(self.grads_prev)
 
+        self.t = 1
+
     def forward(self, X):
 
         # First layer
@@ -149,13 +151,13 @@ class NeuralNetwork():
             self.params[w] -= lr * self.grads[w]
 
 
-    def gd_m(self, lr=0.01, decay=0.9):
+    def gd_m(self, attr):
 
         for w in self.weights:
-            self.z[w] = decay * self.z[w] - lr * self.grads[w]
+            self.z[w] = attr["decay"] * self.z[w] - attr["lr"] * self.grads[w]
             self.params[w] += self.z[w]
 
-    def rprop(self, inc=1.2, dec=0.5, step_sizes=(0.0001,50)):
+    def rprop(self, attr):
 
         for w in self.weights:
 
@@ -165,38 +167,38 @@ class NeuralNetwork():
                 for j in range(len(self.params[w][0])):
 
                     if above_zero[i,j]:
-                        self.step[w][i,j] = min(self.step[w][i,j]*inc, step_sizes[1])
+                        self.step[w][i,j] = min(self.step[w][i,j]*attr["inc"], attr["step_sizes"][1])
                     else:
-                        self.step[w][i,j] = max(self.step[w][i,j]*dec, step_sizes[0])
+                        self.step[w][i,j] = max(self.step[w][i,j]*attr["dec"], attr["step_sizes"][0])
 
                     self.params[w][i,j] -= np.sign(self.grads[w][i,j]) * self.step[w][i,j]
 
         self.grads_prev = self.grads
 
-    def rmsprop(self, lr=0.01, decay=0.9, eps=0.0001):
+    def rmsprop(self, attr):
 
         for w in self.weights:
             for i in range(len(self.params[w])):
                 for j in range(len(self.params[w][0])):
 
-                    self.z[w][i,j] = decay * self.z[w][i,j] + (1 - decay) * self.grads[w][i,j]
-                    self.params[w][i,j] -= lr / (np.sqrt(abs(self.z[w][i,j]))+eps) * self.grads[w][i,j]
+                    self.z[w][i,j] = attr["decay"] * self.z[w][i,j] + (1 - attr["decay"]) * self.grads[w][i,j]
+                    self.params[w][i,j] -= attr["lr"] / (np.sqrt(abs(self.z[w][i,j]))+attr["eps"]) * self.grads[w][i,j]
 
-    def adam(self, t, lr=0.01, b=(0.9,0.999), eps=0.0001):
+    def adam(self, attr):
 
         for w in self.weights:
             for i in range(len(self.params[w])):
                 for j in range(len(self.params[w][0])):
 
-                    self.z[w][i,j] = b[0] * self.z[w][i,j] + (1 - b[0]) * self.grads[w][i,j]
-                    self.o[w][i,j] = b[1] * self.o[w][i,j] + (1 - b[1]) * (self.grads[w][i,j]**2)
+                    self.z[w][i,j] = attr["b"][0] * self.z[w][i,j] + (1 - attr["b"][0]) * self.grads[w][i,j]
+                    self.o[w][i,j] = attr["b"][1] * self.o[w][i,j] + (1 - attr["b"][1]) * (self.grads[w][i,j]**2)
 
-                    z_corr = self.z[w][i,j] / (1 - (b[0] ** t))
-                    o_corr = self.o[w][i,j] / (1 - (b[1] ** t))
+                    z_corr = self.z[w][i,j] / (1 - (attr["b"][0] ** self.t))
+                    o_corr = self.o[w][i,j] / (1 - (attr["b"][1] ** self.t))
 
-                    self.params[w][i,j] -= lr * z_corr / (np.sqrt(abs(o_corr)) + eps)
+                    self.params[w][i,j] -= attr["lr"] * z_corr / (np.sqrt(abs(o_corr)) + attr["eps"])
 
-    def wame(self, lr=0.01, inc=1.2, dec=0.1, a=0.9, step_sizes=(0.01,100), eps=0.0001):
+    def wame(self, attr):
 
         for w in self.weights:
 
@@ -206,16 +208,16 @@ class NeuralNetwork():
                 for j in range(len(self.params[w][0])):
 
                     if above_zero[i,j]:
-                        self.step[w][i,j] = min(self.step[w][i,j]*inc, step_sizes[1])
+                        self.step[w][i,j] = min(self.step[w][i,j]*attr["inc"], attr["step_sizes"][1])
                     else:
-                        self.step[w][i,j] = max(self.step[w][i,j]*dec, step_sizes[0])
+                        self.step[w][i,j] = max(self.step[w][i,j]*attr["dec"], attr["step_sizes"][0])
 
-                    self.z[w][i,j] = a * self.z[w][i,j] + (1 - a) * self.step[w][i,j]
-                    self.o[w][i,j] = a * self.o[w][i,j] + (1 - a) * (self.grads[w][i,j]**2)
+                    self.z[w][i,j] = attr["a"] * self.z[w][i,j] + (1 - attr["a"]) * self.step[w][i,j]
+                    self.o[w][i,j] = attr["a"] * self.o[w][i,j] + (1 - attr["a"]) * (self.grads[w][i,j]**2)
 
                     #print(self.params[w][i,j],lr,self.grads[w][i,j],self.o[w][i,j],self.z[w][i,j])
 
-                    self.params[w][i,j] -= lr * self.grads[w][i,j] / (self.o[w][i,j] * self.z[w][i,j] + eps)
+                    self.params[w][i,j] -= attr["lr"] * self.grads[w][i,j] / (self.o[w][i,j] * self.z[w][i,j] + attr["eps"])
 
         self.grads_prev = self.grads
 

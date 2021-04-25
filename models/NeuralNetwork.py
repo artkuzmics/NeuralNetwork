@@ -1,18 +1,18 @@
 import numpy as np
 import pandas as pd
+import copy
 
 class NeuralNetwork():
-    def __init__(self,x_no,y_no,h_no):
+    def __init__(self,input_size, hidden_layer_size = 3, output_size = 1):
         '''
         i_size: size of input layer
         h_size: size of hidden layer
         o_size: size of output layer
         '''
 
-        self.i_size = x_no
-        self.o_size = y_no
-        self.h_size = h_no
-
+        self.i_size = input_size
+        self.h_size = hidden_layer_size
+        self.o_size = output_size
 
         self.weights = ["b1","W1","b2","W2"]
 
@@ -30,20 +30,6 @@ class NeuralNetwork():
                     "W2": np.zeros(shape=(self.o_size, self.h_size)),
                     }
 
-        self.z = {
-                    "b1": np.zeros(shape=(self.h_size,1)),
-                    "W1": np.zeros(shape=(self.h_size, self.i_size)),
-                    "b2": np.zeros(shape=(self.o_size,1)),
-                    "W2": np.zeros(shape=(self.o_size, self.h_size)),
-                    }
-
-        self.o = {
-                    "b1": np.zeros(shape=(self.h_size,1)),
-                    "W1": np.zeros(shape=(self.h_size, self.i_size)),
-                    "b2": np.zeros(shape=(self.o_size,1)),
-                    "W2": np.zeros(shape=(self.o_size, self.h_size)),
-                    }
-
         self.grads_prev = {
                     "b1": np.ones(shape=(self.h_size,1)),
                     "W1": np.ones(shape=(self.h_size, self.i_size)),
@@ -51,12 +37,9 @@ class NeuralNetwork():
                     "W2": np.ones(shape=(self.o_size, self.h_size)),
                     }
 
-        self.step = {
-                    "b1": np.ones(shape=(self.h_size,1)),
-                    "W1": np.ones(shape=(self.h_size, self.i_size)),
-                    "b2": np.ones(shape=(self.o_size,1)),
-                    "W2": np.ones(shape=(self.o_size, self.h_size)),
-                    }
+        self.z = copy.deepcopy(self.grads)
+        self.o = copy.deepcopy(self.grads)
+        self.step = copy.deepcopy(self.grads_prev)
 
     def forward(self, X):
 
@@ -117,23 +100,28 @@ class NeuralNetwork():
         m = Y.shape[1]
         return (1 / m) * (self.A3 - Y)
 
-    def b_cross_entropy(self, Y, P):
+    def b_cross_entropy(self, y, P):
         """
         Binary Cross Entropy
         P: Estimated probability of belonging to class 1
         Y: Target
         """
-        return -Y * np.log(P) - (1 - Y) * np.log(1 - P)
+
+        m = y.shape[0]
+        ce = -y * np.log(P) - (1 - y) * np.log(1 - P)
+        loss = ce.sum() / ce.shape[1]
+
+        return ce, loss
 
 
-    def db_cross_entropy(self,Y):
+    def db_cross_entropy(self,y):
         """
         Derivative of Binary Cross Entropy
         P: Estimated probability of belonging to class 1
         Y: Target
         """
         P = self.A3
-        return (-Y / P) + (1 - Y)/(1 - P)
+        return (-y / P) + (1 - y)/(1 - P)
 
 
     def predict(self, X, Y):
@@ -153,7 +141,9 @@ class NeuralNetwork():
 
         return prob, p[0], accuracy
 
-    def gd(self, lr=1):
+    def gd(self, attr):
+
+        lr = attr["lr"]
 
         for w in self.weights:
             self.params[w] -= lr * self.grads[w]

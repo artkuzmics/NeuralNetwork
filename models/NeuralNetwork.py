@@ -202,6 +202,7 @@ class NeuralNetwork():
 
         for w in self.weights:
 
+
             above_zero = (self.grads[w] > 0) * (self.grads_prev[w] > 0)
 
             for i in range(len(self.params[w])):
@@ -215,9 +216,10 @@ class NeuralNetwork():
                     self.z[w][i,j] = attr["a"] * self.z[w][i,j] + (1 - attr["a"]) * self.step[w][i,j]
                     self.o[w][i,j] = attr["a"] * self.o[w][i,j] + (1 - attr["a"]) * (self.grads[w][i,j]**2)
 
-                    #print(self.params[w][i,j],lr,self.grads[w][i,j],self.o[w][i,j],self.z[w][i,j])
+                    delta = attr["lr"] * self.grads[w][i,j] / (self.o[w][i,j] * self.z[w][i,j])
 
-                    self.params[w][i,j] -= attr["lr"] * self.grads[w][i,j] / (self.o[w][i,j] * self.z[w][i,j] + attr["eps"])
+                    self.params[w][i,j] -= delta
+
 
         self.grads_prev = self.grads
 
@@ -238,3 +240,15 @@ class NeuralNetwork():
         cost_log = pd.DataFrame(cost_log, columns=["epochs","loss"])
 
         return cost_log
+
+
+
+"""nn_test = NeuralNetwork(input_size = 2, hidden_layer_size = 2, output_size = 1)
+nn_test.params["W1"] = np.array([[1.2, 0.2],[0.6, 1.5]])
+nn_test.grads["W1"] = np.array([[ 1.3, -0.6],[ 0.6, -0.1]])
+nn_test.grads_prev["W1"] = np.array([[-1.07, 0.26], [0.54, 1.51]])
+nn_test.z["W1"] = np.array([[-1.07, 0.26], [0.54, 1.51]])
+nn_test.o["W1"] = np.array([[-0.70, 0.62], [0.45, 0.15]])
+nn_test.step["W1"] = np.array([[0.05, 0.14], [0.63, 1.25]])
+
+nn_test.wame(attr={"lr":0.1, "inc":1.2, "dec":0.1,"a":0.9,"step_sizes":(0.01,100), "eps":0.0001})"""

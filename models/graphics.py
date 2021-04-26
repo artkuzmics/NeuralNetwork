@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn
 
 def visualise_board(log, title):
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2, figsize=(12,12))
@@ -25,3 +26,10 @@ def visualise_board(log, title):
     ax4.xaxis.grid(True,linestyle=":",color='black')
     ax4.set_xlabel("Iterations")
     ax4.set_ylabel("Val. Accuracy")
+
+def pairPlot(data):
+    seaborn.pairplot(data,hue="income",plot_kws={"s": 3},dropna=True)
+
+def corrMap(data):
+    fig,ax = pyplot.subplots(figsize=(15,8))
+    seaborn.heatmap(ax=ax,data=data.corr().round(2),annot=True,cmap=seaborn.diverging_palette(220,20),linewidth=2)

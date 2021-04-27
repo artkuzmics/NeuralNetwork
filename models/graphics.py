@@ -33,3 +33,9 @@ def pairPlot(data):
 def corrMap(data):
     fig,ax = pyplot.subplots(figsize=(15,8))
     seaborn.heatmap(ax=ax,data=data.corr().round(2),annot=True,cmap=seaborn.diverging_palette(220,20),linewidth=2)
+
+def progress_plot(ax,model,X,x):
+    minX = min(X)
+    maxX = max(X)
+    ax.plot([minX,maxX], [model.yhat(minX),model.yhat(maxX)], c="tab:red", alpha=0.35, linewidth=0.1)
+    ax.scatter(x,model.yhat(x), c="tab:red", alpha=0.35, linewidth=0.1)

@@ -3,154 +3,8 @@ import pandas as pd
 import copy
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.model_selection import cross_val_score
-
-def sample(X,Y,batch_size):
-    idx = np.random.randint(0,len(X), batch_size)
-    x = np.take(X, idx)
-    y = np.take(Y, idx)
-    return x,y
-
-def evl(X, y, model):
-    cv = RepeatedStratifiedKFold(n_splits=7, n_repeats=3, random_state=1)
-    scores = cross_val_score(model, X, y, scoring='accuracy', cv=cv, n_jobs=-1)
-    return scores
-
-def sample_batch(data,batch_size):
-    st_batch = data.shape[0] // batch_size
-    idx_end = st_batch * batch_size
-    batch = np.split(data[:idx_end], st_batch)
-
-    if data.shape[0] % batch_size != 0:
-        batch += [data[idx_end:]]
-
-    return batch
-
-class LinearRegression():
-    def __init__(self):
-        # Initialise the parameters
-        self.theta = [np.random.uniform(0,1,1) for _ in range(2)]
-        self.derivatives = [self.dx_theta0, self.dx_theta1]
-
-        self.z = [0,0]
-        self.o = [0,0]
-        self.grads_prev = [0,0]
-        self.step = [1,1]
-
-        self.t = 1
-
-    def yhat(self,x):
-        return self.theta[0] + self.theta[1]*x
-
-    def dx_theta0(self,x,y):
-        m = len(x)
-        dx = -2*(y - self.yhat(x))
-        gr = dx.sum() / m
-        return dx, gr
-
-    def dx_theta1(self,x,y):
-        m = len(x)
-        dx = -2*x*(y - self.yhat(x))
-        gr = dx.sum() / m
-        return dx, gr
-
-    def mse(self,X,Y):
-        residuals = Y - self.yhat(X)
-        RSS = (residuals**2).sum()
-        return RSS/len(X)
-
-    def gd(self,xs,ys,attr):
-        gr = [0,0]
-
-        for i, dx in enumerate(self.derivatives):
-
-            _, gr[i] = dx(xs,ys)
-            self.theta[i] -= attr["lr"]*gr[i]
-
-
-    def gd_m(self,xs,ys,attr):
-
-        gr = [0,0]
-        for i, dx in enumerate(self.derivatives):
-
-            _, gr[i] = dx(xs,ys)
-
-            self.z[i] = attr["decay"] * self.z[i] - attr["lr"] * gr[i]
-            self.theta[i] += self.z[i]
-
-    def rprop(self,xs,ys,attr):
-
-        gr = [0,0]
-
-        for i, dx in enumerate(self.derivatives):
-
-            _, gr[i] = dx(xs,ys)
-
-            if gr[i] * self.grads_prev[i] > 0:
-                self.step[i] = min(self.step[i] * attr["inc"], attr["step_sizes"][1])
-
-            elif gr[i] * self.grads_prev[i] < 0:
-                self.step[i] = max(self.step[i] * attr["dec"], attr["step_sizes"][0])
-
-            self.theta[i] -= np.sign(gr[i]) * self.step[i]
-
-        self.grads_prev = gr
-
-    def rmsprop(self,xs,ys,attr):
-
-        gr = [0,0]
-        for i, dx in enumerate(self.derivatives):
-
-            _, gr[i] = dx(xs,ys)
-
-            self.z[i] = attr["decay"] * self.z[i] + (1-attr["decay"])* (gr[i] **2)
-
-            self.theta[i] -= attr["lr"] / np.sqrt(self.z[i] + attr["eps"]) * gr[i]
-
-    def adam(self,xs,ys,attr):
-
-        gr = [0,0]
-        for i, dx in enumerate(self.derivatives):
-
-            _, gr[i] = dx(xs,ys)
-
-            self.z[i] = attr["b"][0] * self.z[i] + (1 - attr["b"][0]) * gr[i]
-            self.o[i] = attr["b"][1] * self.o[i] + (1 - attr["b"][1]) * (gr[i]**2)
-
-            #Bias correction
-            z_corr = self.z[i] / (1 - (attr["b"][0]**self.t))
-            o_corr = self.o[i] / (1 - (attr["b"][1]**self.t))
-
-
-            #Update parameters
-            self.theta[i] -= attr["lr"] * z_corr / (np.sqrt(o_corr) + attr["eps"])
-
-        self.t += 1
-
-    def wame(self,xs,ys,attr):
-
-        gr = [0,0]
-        for i, dx in enumerate(self.derivatives):
-            _, gr[i] = dx(xs,ys)
-
-            if gr[i] * self.grads_prev[i] > 0:
-                self.step[i] = min(self.step[i] * attr["inc"], attr["step_sizes"][1])
-
-            elif gr[i] * self.grads_prev[i] < 0:
-                self.step[i] = max(self.step[i] * attr["dec"], attr["step_sizes"][0])
-
-            self.z[i] = attr["a"] * self.z[i] + (1 - attr["a"] ) * self.step[i]
-            self.o[i] = attr["a"] * self.o[i] + (1 - attr["a"]) * (gr[i]**2)
-
-            self.theta[i] -= attr["lr"] * gr[i] / (self.o[i] * self.z[i])
-
-        self.grads_prev = gr
-
-
-    def __str__(self):
-        return f"f(yhat) = {round(self.theta[0][0],2)} + {round(self.theta[1][0],2)}x"
-
-
-
+import matplotlib.pyplot as plt
+import seaborn
 
 class NeuralNetwork():
     def __init__(self,input_size, hidden_layer_size = 3, output_size = 1):
@@ -349,7 +203,32 @@ class NeuralNetwork():
                     self.params[w][i,j] -= attr["lr"] * z_corr / (np.sqrt(abs(o_corr)) + attr["eps"])
             self.t += 1
 
-    def wame(self, attr):
+    def wame1(self, attr):
+
+        for w in self.weights:
+
+
+            above_zero = (self.grads[w] > 0) * (self.grads_prev[w] > 0)
+
+            for i in range(len(self.params[w])):
+                for j in range(len(self.params[w][0])):
+
+                    if above_zero[i,j]:
+                        self.step[w][i,j] = min(self.step[w][i,j]*attr["inc"], attr["step_sizes"][1])
+                    else:
+                        self.step[w][i,j] = max(self.step[w][i,j]*attr["dec"], attr["step_sizes"][0])
+
+                    self.z[w][i,j] = attr["a"] * self.z[w][i,j] + (1 - attr["a"]) * self.step[w][i,j]
+                    self.o[w][i,j] = attr["a"] * self.o[w][i,j] + (1 - attr["a"]) * (self.grads[w][i,j]**2)
+
+                    delta = attr["lr"] * self.grads[w][i,j] / (self.o[w][i,j]) * self.z[w][i,j]
+
+                    self.params[w][i,j] -= delta
+
+
+        self.grads_prev = self.grads
+
+    def wame2(self, attr):
 
         for w in self.weights:
 
@@ -375,19 +254,190 @@ class NeuralNetwork():
         self.grads_prev = self.grads
 
 
-    def train(self, X, Y, epochs, optimizer):
 
-        cost_log = []
-        for t in range(epochs):
-            self.forward(X)
-            self.backward(Y)
-            cost = self.cost_comp(Y)
-            self.GD()
-            cost_log.append([t,cost])
 
-            if t % 500 == 0:
-                print(f"Loss after iteration {t}: {round(cost,5)}")
+class LinearRegression():
+    def __init__(self):
+        # Initialise the parameters
+        self.theta = [np.random.uniform(0,1,1) for _ in range(2)]
+        self.derivatives = [self.dx_theta0, self.dx_theta1]
 
-        cost_log = pd.DataFrame(cost_log, columns=["epochs","loss"])
+        self.z = [0,0]
+        self.o = [0,0]
+        self.grads_prev = [0,0]
+        self.step = [1,1]
 
-        return cost_log
+        self.t = 1
+
+    def yhat(self,x):
+        return self.theta[0] + self.theta[1]*x
+
+    def dx_theta0(self,x,y):
+        m = len(x)
+        dx = -2*(y - self.yhat(x))
+        gr = dx.sum() / m
+        return dx, gr
+
+    def dx_theta1(self,x,y):
+        m = len(x)
+        dx = -2*x*(y - self.yhat(x))
+        gr = dx.sum() / m
+        return dx, gr
+
+    def mse(self,X,Y):
+        residuals = Y - self.yhat(X)
+        RSS = (residuals**2).sum()
+        return RSS/len(X)
+
+    def gd(self,xs,ys,attr):
+        gr = [0,0]
+
+        for i, dx in enumerate(self.derivatives):
+
+            _, gr[i] = dx(xs,ys)
+            self.theta[i] -= attr["lr"]*gr[i]
+
+
+    def gd_m(self,xs,ys,attr):
+
+        gr = [0,0]
+        for i, dx in enumerate(self.derivatives):
+
+            _, gr[i] = dx(xs,ys)
+
+            self.z[i] = attr["decay"] * self.z[i] - attr["lr"] * gr[i]
+            self.theta[i] += self.z[i]
+
+    def rprop(self,xs,ys,attr):
+
+        gr = [0,0]
+
+        for i, dx in enumerate(self.derivatives):
+
+            _, gr[i] = dx(xs,ys)
+
+            if gr[i] * self.grads_prev[i] > 0:
+                self.step[i] = min(self.step[i] * attr["inc"], attr["step_sizes"][1])
+
+            elif gr[i] * self.grads_prev[i] < 0:
+                self.step[i] = max(self.step[i] * attr["dec"], attr["step_sizes"][0])
+
+            self.theta[i] -= np.sign(gr[i]) * self.step[i]
+
+        self.grads_prev = gr
+
+    def rmsprop(self,xs,ys,attr):
+
+        gr = [0,0]
+        for i, dx in enumerate(self.derivatives):
+
+            _, gr[i] = dx(xs,ys)
+
+            self.z[i] = attr["decay"] * self.z[i] + (1-attr["decay"])* (gr[i] **2)
+
+            self.theta[i] -= attr["lr"] / np.sqrt(self.z[i] + attr["eps"]) * gr[i]
+
+    def adam(self,xs,ys,attr):
+
+        gr = [0,0]
+        for i, dx in enumerate(self.derivatives):
+
+            _, gr[i] = dx(xs,ys)
+
+            self.z[i] = attr["b"][0] * self.z[i] + (1 - attr["b"][0]) * gr[i]
+            self.o[i] = attr["b"][1] * self.o[i] + (1 - attr["b"][1]) * (gr[i]**2)
+
+            #Bias correction
+            z_corr = self.z[i] / (1 - (attr["b"][0]**self.t))
+            o_corr = self.o[i] / (1 - (attr["b"][1]**self.t))
+
+
+            #Update parameters
+            self.theta[i] -= attr["lr"] * z_corr / (np.sqrt(o_corr) + attr["eps"])
+
+        self.t += 1
+
+    def wame(self,xs,ys,attr):
+
+        gr = [0,0]
+        for i, dx in enumerate(self.derivatives):
+            _, gr[i] = dx(xs,ys)
+
+            if gr[i] * self.grads_prev[i] > 0:
+                self.step[i] = min(self.step[i] * attr["inc"], attr["step_sizes"][1])
+
+            elif gr[i] * self.grads_prev[i] < 0:
+                self.step[i] = max(self.step[i] * attr["dec"], attr["step_sizes"][0])
+
+            self.z[i] = attr["a"] * self.z[i] + (1 - attr["a"] ) * self.step[i]
+            self.o[i] = attr["a"] * self.o[i] + (1 - attr["a"]) * (gr[i]**2)
+
+            self.theta[i] -= attr["lr"] * gr[i] / (self.o[i]) * self.z[i]
+
+        self.grads_prev = gr
+
+
+    def __str__(self):
+        return f"f(yhat) = {round(self.theta[0][0],2)} + {round(self.theta[1][0],2)}x"
+
+
+# Helper functions
+
+
+def sample(X,Y,batch_size):
+    idx = np.random.randint(0,len(X), batch_size)
+    x = np.take(X, idx)
+    y = np.take(Y, idx)
+    return x,y
+
+def evl(X, y, model):
+    cv = RepeatedStratifiedKFold(n_splits=7, n_repeats=3, random_state=1)
+    scores = cross_val_score(model, X, y, scoring='accuracy', cv=cv, n_jobs=-1)
+    return scores
+
+def sample_batch(data,batch_size):
+    st_batch = data.shape[0] // batch_size
+    idx_end = st_batch * batch_size
+    batch = np.split(data[:idx_end], st_batch)
+
+    if data.shape[0] % batch_size != 0:
+        batch += [data[idx_end:]]
+
+    return batch
+
+def visualise_board(log, title):
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2, figsize=(12,12))
+
+    fig.suptitle(title, fontsize=16)
+    ax1.plot(log["epochs"],log["T Loss"], c="tab:blue")
+    ax1.xaxis.grid(True,linestyle=":",color='black')
+    ax1.set_xlabel("Iterations")
+    ax1.set_ylabel("Train. Loss")
+
+    ax2.plot(log["epochs"],log["T Accuracy"], c="tab:red")
+    ax2.xaxis.grid(True,linestyle=":",color='black')
+    ax2.set_xlabel("Iterations")
+    ax2.set_ylabel("Train. Accuracy")
+
+    ax3.plot(log["epochs"],log["V Loss"], c="tab:green")
+    ax3.xaxis.grid(True,linestyle=":",color='black')
+    ax3.set_xlabel("Iterations")
+    ax3.set_ylabel("Val. Loss")
+
+    ax4.plot(log["epochs"],log["V Accuracy"], c="tab:orange")
+    ax4.xaxis.grid(True,linestyle=":",color='black')
+    ax4.set_xlabel("Iterations")
+    ax4.set_ylabel("Val. Accuracy")
+
+def pairPlot(data):
+    seaborn.pairplot(data,hue="income",plot_kws={"s": 3},dropna=True)
+
+def corrMap(data):
+    fig,ax = pyplot.subplots(figsize=(15,8))
+    seaborn.heatmap(ax=ax,data=data.corr().round(2),annot=True,cmap=seaborn.diverging_palette(220,20),linewidth=2)
+
+def progress_plot(ax,model,X,x):
+    minX = min(X)
+    maxX = max(X)
+    ax.plot([minX,maxX], [model.yhat(minX),model.yhat(maxX)], c="tab:red", alpha=0.35, linewidth=0.1)
+    ax.scatter(x,model.yhat(x), c="tab:red", alpha=0.35, linewidth=0.1)

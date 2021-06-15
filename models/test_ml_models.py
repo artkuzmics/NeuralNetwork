@@ -1,5 +1,5 @@
 import pytest
-from NeuralNetwork import *
+from ml_models import *
 
 def test_forward():
     X = np.array([[0,0],[0,1],[1,0],[1,1]])
